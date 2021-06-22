@@ -35,6 +35,16 @@ public class LifeEventController {
         return ResponseEntity.ok(callbackResponseTransformer.updateTaskList(request));
     }
 
+    @PostMapping(path = "/manualUpdate")
+    public ResponseEntity<CallbackResponse> manualUpdate(@RequestBody CallbackRequest request) {
+        final CaseDetails caseDetails = request.getCaseDetails();
+        final List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<DeathRecord>> deathRecords
+            = lifeEventService.getDeathRecordsByNamesAndDate(caseDetails);
+        final CallbackResponse response = callbackResponseTransformer.updateTaskList(request);
+        response.getData().setDeathRecords(deathRecords);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping(path = "/updateWithSystemNumber")
     public ResponseEntity<CallbackResponse> updateWithSystemNumber(@RequestBody CallbackRequest request) {
         final Integer systemNumber = request.getCaseDetails().getData().getDeathRecordSystemNumber();

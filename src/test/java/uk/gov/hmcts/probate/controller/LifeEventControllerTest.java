@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import uk.gov.hmcts.probate.insights.AppInsights;
+import uk.gov.hmcts.probate.model.ccd.raw.CollectionMember;
 import uk.gov.hmcts.probate.model.ccd.raw.DeathRecord;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseData;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseDetails;
@@ -22,8 +23,12 @@ import uk.gov.hmcts.probate.security.SecurityUtils;
 import uk.gov.hmcts.probate.service.LifeEventService;
 import uk.gov.hmcts.probate.util.TestUtils;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -59,7 +64,7 @@ public class LifeEventControllerTest {
 
     @Captor
     private ArgumentCaptor<CaseDetails> caseDetailsArgumentCaptor;
-    
+
     @Before
     public void setup() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
@@ -71,11 +76,11 @@ public class LifeEventControllerTest {
         String payload = testUtils.getStringFromFile("lifeEventPayload.json");
 
         mockMvc.perform(post("/lifeevent/update")
-                .content(payload)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data")));
-        
+            .content(payload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("data")));
+
         verify(lifeEventService).verifyDeathRecord(caseDetailsArgumentCaptor.capture(), any());
         final CaseDetails caseDetailsArgumentCaptorValue = caseDetailsArgumentCaptor.getValue();
         assertThat(caseDetailsArgumentCaptorValue.getId()).isEqualTo(1621002468661478L);
@@ -97,7 +102,25 @@ public class LifeEventControllerTest {
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.deathRecord", notNullValue()));
-        
+
         verify(lifeEventService).getDeathRecordById(eq(500035096));
+    }
+
+    @Test
+    public void shouldLookupDeathRecordByNameAndDate() throws Exception {
+        String payload = testUtils.getStringFromFile("lifeEventPayload.json");
+        final LocalDate dateOfDeath = LocalDate.of(2006, 11, 16);
+        DeathRecord deathRecord = DeathRecord.builder().name("John Cook").dateOfDeath(dateOfDeath).build();
+        CollectionMember collectionMember = new CollectionMember(null, deathRecord);
+        List results = List.of(collectionMember);
+        when(lifeEventService.getDeathRecordsByNamesAndDate(any())).thenReturn(results);
+
+        mockMvc.perform(post("/lifeevent/manualUpdate")
+            .content(payload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.deathRecords", notNullValue()))
+            .andExpect(jsonPath("$.data.deathRecords", hasSize(1)))
+            .andExpect(jsonPath("$.data.deathRecords[0].value.name").value("John Cook"));
     }
 }

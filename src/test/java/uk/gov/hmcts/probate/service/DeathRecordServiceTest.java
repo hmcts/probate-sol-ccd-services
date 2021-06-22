@@ -31,10 +31,9 @@ public class DeathRecordServiceTest {
         final List<CollectionMember<DeathRecord>> collectionMembers = deathRecordService.mapDeathRecords(null);
         assert (collectionMembers.isEmpty());
     }
-
-
+    
     @Test
-    public void mapDeathRecordsShouldHandleListWilthNullElement() {
+    public void mapDeathRecordsShouldHandleListWithNullElement() {
         ArrayList list = new ArrayList();
         list.add(null);
         final List<CollectionMember<DeathRecord>> collectionMembers = deathRecordService.mapDeathRecords(list);
@@ -132,4 +131,28 @@ public class DeathRecordServiceTest {
         assertNotNull(null, result);
         assertEquals(1234, result.getSystemNumber());
     }
+
+
+    @Test
+    public void mapDeathRecordsCCDShouldHandleEmptyList() {
+        final List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> collectionMembers = deathRecordService
+            .mapDeathRecordsCCD(Collections.emptyList());
+        assert (collectionMembers.isEmpty());
+    }
+
+    @Test
+    public void mapDeathRecordsCCDShouldHandleNull() {
+        final List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> collectionMembers = deathRecordService.mapDeathRecordsCCD(null);
+        assert (collectionMembers.isEmpty());
+    }
+
+
+    @Test
+    public void mapDeathRecordsCCDShouldHandleListWithNullElement() {
+        ArrayList list = new ArrayList();
+        list.add(null);
+        final List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> collectionMembers = deathRecordService.mapDeathRecordsCCD(list);
+        assert (collectionMembers.isEmpty());
+    }
+
 }

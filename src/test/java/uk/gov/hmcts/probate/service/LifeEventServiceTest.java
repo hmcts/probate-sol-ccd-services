@@ -71,11 +71,11 @@ public class LifeEventServiceTest {
     List<CollectionMember<DeathRecord>> mappedRecords;
     LocalDate localDate;
     V1Death v1Death;
-
+    final String firstName = "Wibble";
+    final String lastName = "Wobble";
+    
     @Before
     public void setup() {
-        final String firstName = "Wibble";
-        final String lastName = "Wobble";
         localDate = LocalDate.of(1900, 1, 1);
 
         final Deceased deceased = new Deceased();
@@ -198,4 +198,32 @@ public class LifeEventServiceTest {
         assertEquals("Test exception", exception.getMessage());
     }
 
+    @Test
+    public void shouldPropagateExceptionWhenSearchingByNameAndDate() {
+        when(deathService.searchForDeathRecordsByNamesAndDate(any(),any(),any())).thenThrow(new RuntimeException(
+            "Test exception"));
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            lifeEventService.getDeathRecordsByNamesAndDate(caseDetails);
+        });
+
+        assertEquals("Test exception", exception.getMessage());
+    }
+    
+    @Test
+    public void shouldThowBusinessValidationExceptionWhenNoDeathRecordsFound() {
+        when(deathService.searchForDeathRecordsByNamesAndDate(any(),any(),any())).thenReturn(emptyList());
+        Exception exception = assertThrows(BusinessValidationException.class, () -> {
+            lifeEventService.getDeathRecordsByNamesAndDate(caseDetails);
+        });
+
+        assertEquals("No death records found", exception.getMessage());
+    }
+
+
+    @Test
+    public void shouldSearchByNameAndDate() {
+        lifeEventService.getDeathRecordsByNamesAndDate(caseDetails);
+        verify(deathService).searchForDeathRecordsByNamesAndDate(eq(firstName), eq(lastName), eq(localDate));
+        verify(deathRecordService).mapDeathRecordsCCD(eq(deathRecords));
+    }
 }

@@ -34,8 +34,10 @@ public class LifeEventService {
     public static final String LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_DESCRIPTION = "Found no matching death records";
     public static final String LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_SUMMARY = "Stop case and request system number";
     public static final String LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_DESCRIPTION = "Multiple death records returned";
-    public static final String LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_SUMMARY = "View LEV tab and use next steps to " 
+    public static final String LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_SUMMARY = "View LEV tab and use next steps to "
         + "make a selection";
+    public static final String LIFE_EVENT_VERIFICATION_ERROR_DESCRIPTION = "LEV API failed";
+    public static final String LIFE_EVENT_VERIFICATION_ERROR_SUMMARY = "Use the dropdown to manually verify life event";
     private DeathService deathService;
     private CcdClientApi ccdClientApi;
     private DeathRecordService deathRecordService;
@@ -66,6 +68,29 @@ public class LifeEventService {
         return deathRecordService.mapDeathRecordCCD(record);
     }
 
+    public List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> getDeathRecordsByNamesAndDate(final CaseDetails caseDetails) {
+        final CaseData caseData = caseDetails.getData();
+        final String deceasedForenames = caseData.getDeceasedForenames();
+        final String deceasedSurname = caseData.getDeceasedSurname();
+        final LocalDate deceasedDateOfDeath = caseData.getDeceasedDateOfDeath();
+        log.info("Trying LEV call");
+        List<V1Death> records;
+        try {
+            records = deathService.searchForDeathRecordsByNamesAndDate(deceasedForenames, deceasedSurname,
+                deceasedDateOfDeath);
+        } catch (Exception e) {
+            log.error("Error during LEV call", e);
+            throw e;
+        }
+
+        if (records.isEmpty()) {
+            String message = "No death records found";
+            throw new BusinessValidationException(message, message);
+        }
+
+        return deathRecordService.mapDeathRecordsCCD(records);
+    }
+
     @Async
     public void verifyDeathRecord(final CaseDetails caseDetails, final SecurityDTO securityDTO) {
         final CaseData caseData = caseDetails.getData();
@@ -73,15 +98,14 @@ public class LifeEventService {
         final String deceasedSurname = caseData.getDeceasedSurname();
         final LocalDate deceasedDateOfDeath = caseData.getDeceasedDateOfDeath();
         final String caseId = caseDetails.getId().toString();
-        log.info("Trying LEV call");
+        log.info("Trying LEV call " + caseId);
         List<V1Death> records = emptyList();
         try {
             records = deathService
                 .searchForDeathRecordsByNamesAndDate(deceasedForenames, deceasedSurname, deceasedDateOfDeath);
         } catch (Exception e) {
-            log.error("Error during LEV call", e);
-            throw e;
-            
+            log.error("Error during LEV call ", e);
+            updateCCDLifeEventVerificationError(caseId, securityDTO);
         }
         log.info("LEV Records returned: " + records.size());
         if (1 == records.size()) {
@@ -104,30 +128,30 @@ public class LifeEventService {
             .deathRecords(deathRecordService.mapDeathRecords(records))
             .build();
 
-        ccdClientApi.updateCaseAsCitizen(
-            CcdCaseType.GRANT_OF_REPRESENTATION,
-            caseId,
-            grantOfRepresentationData,
-            EventId.DEATH_RECORD_VERIFIED,
-            securityDTO,
-            LIFE_EVENT_VERIFICATION_SUCCESSFUL_DESCRIPTION,
-            LIFE_EVENT_VERIFICATION_SUCCESSFUL_SUMMARY
-        );
+            ccdClientApi.updateCaseAsCitizen(
+                CcdCaseType.GRANT_OF_REPRESENTATION,
+                caseId,
+                grantOfRepresentationData,
+                EventId.DEATH_RECORD_VERIFIED,
+                securityDTO,
+                LIFE_EVENT_VERIFICATION_SUCCESSFUL_DESCRIPTION,
+                LIFE_EVENT_VERIFICATION_SUCCESSFUL_SUMMARY
+            );
     }
 
     private void updateCCDLifeEventVerificationNoRecordsFound(final String caseId, final SecurityDTO securityDTO) {
 
         log.info("LEV updateCCDLifeEventVerificationNoRecordsFound: " + caseId);
 
-        ccdClientApi.updateCaseAsCitizen(
-            CcdCaseType.GRANT_OF_REPRESENTATION,
-            caseId,
-            null,
-            EventId.DEATH_RECORD_VERIFICATION_FAILED,
-            securityDTO,
-            LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_DESCRIPTION,
-            LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_SUMMARY
-        );
+            ccdClientApi.updateCaseAsCitizen(
+                CcdCaseType.GRANT_OF_REPRESENTATION,
+                caseId,
+                null,
+                EventId.DEATH_RECORD_VERIFICATION_FAILED,
+                securityDTO,
+                LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_DESCRIPTION,
+                LIFE_EVENT_VERIFICATION_UNSUCCESSFUL_SUMMARY
+            );
     }
 
     private void updateCCDLifeEventVerificationMultipleRecordsFound(final String caseId,
@@ -135,20 +159,36 @@ public class LifeEventService {
                                                                     final SecurityDTO securityDTO) {
 
         log.info("LEV updateCCDLifeEventVerificationMultipleRecordsFound: " + caseId);
-        
+
         final GrantOfRepresentationData grantOfRepresentationData = GrantOfRepresentationData
             .builder()
             .deathRecords(deathRecordService.mapDeathRecords(records))
             .build();
-        
+
+            ccdClientApi.updateCaseAsCitizen(
+                CcdCaseType.GRANT_OF_REPRESENTATION,
+                caseId,
+                grantOfRepresentationData,
+                EventId.DEATH_RECORD_VERIFICATION_FAILED,
+                securityDTO,
+                LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_DESCRIPTION,
+                LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_SUMMARY
+            );
+    }
+
+    private void updateCCDLifeEventVerificationError(final String caseId,
+                                                     final SecurityDTO securityDTO) {
+
+        log.info("LEV updateCCDLifeEventVerificationMultipleRecordsFound: " + caseId);
+
         ccdClientApi.updateCaseAsCitizen(
             CcdCaseType.GRANT_OF_REPRESENTATION,
             caseId,
-            grantOfRepresentationData,
+            null,
             EventId.DEATH_RECORD_VERIFICATION_FAILED,
             securityDTO,
-            LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_DESCRIPTION,
-            LIFE_EVENT_VERIFICATION_MULTIPLE_RECORDS_SUMMARY
+            LIFE_EVENT_VERIFICATION_ERROR_DESCRIPTION,
+            LIFE_EVENT_VERIFICATION_ERROR_SUMMARY
         );
     }
 }
