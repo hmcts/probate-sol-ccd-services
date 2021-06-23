@@ -31,9 +31,27 @@ public class LifeEventController {
     @PostMapping(path = "/update")
     public ResponseEntity<CallbackResponse> update(@RequestBody CallbackRequest request) {
         final CaseDetails caseDetails = request.getCaseDetails();
-        lifeEventService.verifyDeathRecord(caseDetails, securityUtils.getSecurityDTO());
+        lifeEventService.verifyDeathRecord(caseDetails, securityUtils.getSecurityDTO(), false);
         return ResponseEntity.ok(callbackResponseTransformer.updateTaskList(request));
     }
+
+    @PostMapping(path = "/manualUpdate")
+    public ResponseEntity<CallbackResponse> manualUpdate(@RequestBody CallbackRequest request) {
+        final CaseDetails caseDetails = request.getCaseDetails();
+        lifeEventService.verifyDeathRecord(caseDetails, securityUtils.getSecurityDTO(), true);
+        return ResponseEntity.ok(callbackResponseTransformer.updateTaskList(request));
+    }
+
+    //    @PostMapping(path = "/manualUpdate")
+    //    public ResponseEntity<CallbackResponse> manualUpdate(@RequestBody CallbackRequest request) {
+    //        final CaseDetails caseDetails = request.getCaseDetails();
+    //        final List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<DeathRecord>> deathRecords 
+    //            = lifeEventService.getDeathRecordsByNamesAndDate(caseDetails);
+    //        final CallbackResponse response = callbackResponseTransformer.updateTaskList(request);
+    //        response.getData().setDeathRecords(deathRecords);
+    //        System.out.println("Response deathrecords: " + response.getData().getDeathRecords());
+    //        return ResponseEntity.ok(response);
+    //    }
 
     @PostMapping(path = "/updateWithSystemNumber")
     public ResponseEntity<CallbackResponse> updateWithSystemNumber(@RequestBody CallbackRequest request) {

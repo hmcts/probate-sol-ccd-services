@@ -53,6 +53,22 @@ public class DeathRecordService {
         return builder.build();
     }
 
+    public List<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> mapDeathRecordsCCD(List<V1Death> deathRecords) {
+        return Optional.ofNullable(deathRecords)
+            .map(Collection::stream)
+            .orElseGet(Stream::empty)
+            .filter(Objects::nonNull)
+            .map(this::mapCollectionMemberCCD)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toList());
+    }
+
+    private Optional<uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<uk.gov.hmcts.probate.model.ccd.raw.DeathRecord>> mapCollectionMemberCCD(@NotNull V1Death v1Death) {
+        return Optional.of(v1Death)
+            .map(this::mapDeathRecordCCD)
+            .map(d -> new uk.gov.hmcts.probate.model.ccd.raw.CollectionMember<>(null, d));
+    }
+    
     @SuppressWarnings("squid:S2583")
     public uk.gov.hmcts.probate.model.ccd.raw.DeathRecord mapDeathRecordCCD(V1Death v1Death) {
         if (null == v1Death) {
