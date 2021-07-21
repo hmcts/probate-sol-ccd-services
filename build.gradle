@@ -165,7 +165,7 @@ def versions = [
         lombok                          : '1.18.16',
         springfoxSwagger                : '2.10.5',
         springSecurityVersion           : '5.3.5.RELEASE',
-        probateCommonsVersion           : '1.2.3',
+        probateCommonsVersion           : 'DTSPB-1768-test3',
         ccdClient                       : '4.7.5',
         mapStruct                       : '1.2.0.Final',
         serviceAuthVersion              : '3.0.0',
@@ -206,7 +206,7 @@ dependencyManagement {
 
     //CVE-2020-15250
     dependency group: 'junit', name: 'junit', version: '4.13.2'
-    
+
     //CVE-2021-22112
     dependencySet(group: 'org.springframework.security', version: '5.3.9.RELEASE') {
       entry 'spring-security-config'
@@ -326,7 +326,7 @@ dependencies {
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.2"
   testImplementation group: 'com.github.tomakehurst', name: 'wiremock', version: '2.27.1'
   testImplementation 'org.awaitility:awaitility:4.1.0'
-  
+
   testSmokeCompile group: 'io.rest-assured', name: 'rest-assured', version: versions.restAssured
   testSmokeCompile sourceSets.main.runtimeClasspath
   testSmokeCompile sourceSets.test.runtimeClasspath

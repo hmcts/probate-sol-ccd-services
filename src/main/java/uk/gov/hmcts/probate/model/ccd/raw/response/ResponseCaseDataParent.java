@@ -44,4 +44,5 @@ public class ResponseCaseDataParent {
     protected String solsPBAPaymentReference;
     protected String solsOrgHasPBAs;
     protected String solsNeedsPBAPayment;
+    protected String automatedProcess;
 }

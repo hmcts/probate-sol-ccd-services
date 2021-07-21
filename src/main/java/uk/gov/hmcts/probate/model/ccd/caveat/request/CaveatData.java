@@ -102,6 +102,8 @@ public class CaveatData {
 
     private String messageContent;
 
+    private String automatedProcess;
+
     // EVENT = cavUploadDocument
 
     private List<CollectionMember<UploadDocument>> documentsUploaded;
