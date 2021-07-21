@@ -25,6 +25,7 @@ import static uk.gov.hmcts.probate.model.Constants.CAVEAT_LIFESPAN;
 public class SolsBoCaveatsServiceTests extends IntegrationTestBase {
 
     private static final String CAVEAT_RAISED = "/caveat/raise";
+    private static final String CAVEAT_VALIDATE_AMEND = "/caveat/validate-amend-caveat";
     private static final String CAVEAT_DEFAULT_VALUES = "/caveat/defaultValues";
     private static final String CAVEAT_GENERAL_MESSAGE = "/caveat/general-message";
     private static final String CAVEAT_CONFIRMATION = "/caveat/confirmation";
@@ -53,6 +54,7 @@ public class SolsBoCaveatsServiceTests extends IntegrationTestBase {
     private static final String DEFAULT_PAYLOAD_SOLICITOR_RESPONSE_WELSH = 
         "caveatPayloadNotificationsSolicitorResponseWelsh.txt";
     private static final String DEFAULT_PAYLOAD_SOLICITOR_NO_DOB = "caveatPayloadNotificationsSolicitorNoDOB.json";
+    private static final String DEFAULT_PAYLOAD_SOLICITOR_INVALID_EMAIL = "caveatPayloadSolicitorInvalidEmail.json";
     private static final String RESPONSE_PAYLOAD_SOLICITOR_NO_DOB = "caveatPayloadNotificationsSolicitorNoDOBResponse" 
         + ".txt";
     private static final String DEFAULT_PAYLOAD_SOLICITOR_NO_DOB_WELSH =
@@ -224,6 +226,60 @@ public class SolsBoCaveatsServiceTests extends IntegrationTestBase {
     @Test
     public void verifyCaveatRaisedSolicitorPaperEmailContentsNoDOB() {
         final ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD_SOLICITOR_NO_DOB, CAVEAT_RAISED);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(RESPONSE_PAYLOAD_SOLICITOR_NO_DOB, EMAIL_NOTIFICATION_URL,
+            responseBody, replacements);
+    }
+
+    @Test
+    public void verifyPersonalCaveatAmendedEmailContents() {
+        ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD, CAVEAT_VALIDATE_AMEND);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(DEFAULT_PAYLOAD_RESPONSE, EMAIL_NOTIFICATION_URL, responseBody,
+            replacements);
+    }
+
+    @Test
+    public void verifyPersonalCaveatAmendEmailContentsNoDOB() {
+        ResponseBody responseBody = validatePostSuccess(PAYLOAD_CAVEAT_NO_DOB, CAVEAT_VALIDATE_AMEND);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(RESPONSE_CAVEAT_NO_DOB, EMAIL_NOTIFICATION_URL, responseBody,
+            replacements);
+    }
+
+    @Test
+    public void verifyPersonalCaveatAmendCtscEmailContents() {
+        ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD_CTSC, CAVEAT_VALIDATE_AMEND);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(DEFAULT_PAYLOAD_CTSC_RESPONSE, EMAIL_NOTIFICATION_URL,
+            responseBody, replacements);
+    }
+
+    @Test
+    public void verifyPersonalCaveatAmendCtscEmailContentsNoDOB() {
+        ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD_CTSC_NO_DOB, CAVEAT_VALIDATE_AMEND);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(DEFAULT_PAYLOAD_CTSC_NO_DOB_RESPONSE, EMAIL_NOTIFICATION_URL,
+            responseBody, replacements);
+    }
+
+    @Test
+    public void verifyCaveatAmendSolicitorPaperEmailContents() {
+        ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD_SOLICITOR, CAVEAT_VALIDATE_AMEND);
+        final HashMap<String, String> replacements = new HashMap<>();
+        replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
+        assertExpectedContentsWithExpectedReplacement(DEFAULT_PAYLOAD_SOLICITOR_RESPONSE, EMAIL_NOTIFICATION_URL,
+            responseBody, replacements);
+    }
+
+    @Test
+    public void verifyCaveatAmendSolicitorPaperEmailContentsNoDOB() {
+        ResponseBody responseBody = validatePostSuccess(DEFAULT_PAYLOAD_SOLICITOR_NO_DOB, CAVEAT_VALIDATE_AMEND);
         final HashMap<String, String> replacements = new HashMap<>();
         replacements.put(EXPIRY_DATE_KEY, utils.formatDate(LocalDate.now().plusMonths(CAVEAT_LIFESPAN)));
         assertExpectedContentsWithExpectedReplacement(RESPONSE_PAYLOAD_SOLICITOR_NO_DOB, EMAIL_NOTIFICATION_URL,

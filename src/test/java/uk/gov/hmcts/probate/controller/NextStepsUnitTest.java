@@ -34,10 +34,13 @@ import uk.gov.hmcts.probate.service.payments.CreditAccountPaymentTransformer;
 import uk.gov.hmcts.probate.service.payments.PaymentsService;
 import uk.gov.hmcts.probate.transformer.CCDDataTransformer;
 import uk.gov.hmcts.probate.transformer.CallbackResponseTransformer;
+import uk.gov.hmcts.probate.validator.CaseDetailsEmailValidationRule;
 import uk.gov.hmcts.probate.validator.CreditAccountPaymentValidationRule;
 import uk.gov.hmcts.probate.validator.SolicitorPaymentMethodValidationRule;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
@@ -96,13 +99,16 @@ public class NextStepsUnitTest {
     private CreditAccountPaymentValidationRule creditAccountPaymentValidationRule;
     @Mock
     private SolicitorPaymentMethodValidationRule solicitorPaymentMethodValidationRule;
-    
+
     @Mock
     private CreditAccountPayment creditAccountPaymentMock;
     @Mock
     private PaymentResponse paymentResponseMock;
-    
+
     private static final String AUTH = "Auth";
+
+    private List<CaseDetailsEmailValidationRule> allCaseDetailsEmailValidationRule =
+        new ArrayList<CaseDetailsEmailValidationRule>();
 
     @MockBean
     private AppInsights appInsights;
@@ -111,9 +117,9 @@ public class NextStepsUnitTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        underTest = new NextStepsController(eventValidationService, ccdBeanTransformerMock, 
-            confirmationResponseServiceMock, callbackResponseTransformerMock, objectMapperMock, feeServiceMock, 
-            stateChangeServiceMock, paymentsService, creditAccountPaymentTransformer, 
+        underTest = new NextStepsController(eventValidationService, ccdBeanTransformerMock,
+            confirmationResponseServiceMock, callbackResponseTransformerMock, objectMapperMock, feeServiceMock,
+            stateChangeServiceMock, allCaseDetailsEmailValidationRule, paymentsService, creditAccountPaymentTransformer,
             creditAccountPaymentValidationRule, solicitorPaymentMethodValidationRule);
 
         when(callbackRequestMock.getCaseDetails()).thenReturn(caseDetailsMock);
@@ -123,7 +129,7 @@ public class NextStepsUnitTest {
         when(callbackResponseTransformerMock
             .transformForSolicitorComplete(callbackRequestMock, feesResponseMock, paymentResponseMock))
             .thenReturn(callbackResponseMock);
-        
+
         when(feeServiceMock.getAllFeesData(null, 0L, 0L)).thenReturn(feesResponseMock);
         when(paymentsService.getCreditAccountPaymentResponse(AUTH, creditAccountPaymentMock))
             .thenReturn(paymentResponseMock);
@@ -143,7 +149,7 @@ public class NextStepsUnitTest {
             .thenReturn(callbackResponseMock);
         CallbackResponse creditPaymentResponseError = Mockito.mock(CallbackResponse.class);
         when(creditPaymentResponseError.getErrors()).thenReturn(Collections.emptyList());
-        when(eventValidationService.validatePaymentResponse(caseDetailsMock, paymentResponseMock, 
+        when(eventValidationService.validatePaymentResponse(caseDetailsMock, paymentResponseMock,
             creditAccountPaymentValidationRule)).thenReturn(creditPaymentResponseError);
 
         ResponseEntity<CallbackResponse> response = underTest.validate(AUTH, callbackRequestMock,
@@ -182,7 +188,7 @@ public class NextStepsUnitTest {
         when(feesResponseMock.getTotalAmount()).thenReturn(BigDecimal.valueOf(100000));
         CallbackResponse creditPaymentResponseError = Mockito.mock(CallbackResponse.class);
         when(creditPaymentResponseError.getErrors()).thenReturn(Arrays.asList("error"));
-        when(eventValidationService.validatePaymentResponse(caseDetailsMock, paymentResponseMock, 
+        when(eventValidationService.validatePaymentResponse(caseDetailsMock, paymentResponseMock,
             creditAccountPaymentValidationRule)).thenReturn(creditPaymentResponseError);
 
         ResponseEntity responseEntity = underTest.validate(AUTH, callbackRequestMock,
@@ -204,7 +210,7 @@ public class NextStepsUnitTest {
         underTest.validate(AUTH, callbackRequestMock,
             bindingResultMock, httpServletRequestMock);
     }
-    
+
     @Test(expected = BadRequestException.class)
     public void shouldValidateWithError() {
         when(caseDetailsMock.getData()).thenReturn(caseDataMock);

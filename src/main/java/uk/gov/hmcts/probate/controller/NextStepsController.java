@@ -32,6 +32,8 @@ import uk.gov.hmcts.probate.service.payments.CreditAccountPaymentTransformer;
 import uk.gov.hmcts.probate.service.payments.PaymentsService;
 import uk.gov.hmcts.probate.transformer.CCDDataTransformer;
 import uk.gov.hmcts.probate.transformer.CallbackResponseTransformer;
+import uk.gov.hmcts.probate.validator.CaseDetailsEmailValidationRule;
+import java.util.List;
 import uk.gov.hmcts.probate.validator.CreditAccountPaymentValidationRule;
 import uk.gov.hmcts.probate.validator.SolicitorPaymentMethodValidationRule;
 
@@ -53,6 +55,7 @@ public class NextStepsController {
     private final ObjectMapper objectMapper;
     private final FeeService feeService;
     private final StateChangeService stateChangeService;
+    private final List<CaseDetailsEmailValidationRule> allCaseDetailsEmailValidationRule;
     private final PaymentsService paymentsService;
     private final CreditAccountPaymentTransformer creditAccountPaymentTransformer;
     private final CreditAccountPaymentValidationRule creditAccountPaymentValidationRule;
@@ -69,7 +72,7 @@ public class NextStepsController {
         HttpServletRequest request) {
 
         logRequest(request.getRequestURI(), callbackRequest);
-
+        validateEmailAddresses(callbackRequest);
         CallbackResponse callbackResponse;
         Optional<String> newState =
             stateChangeService.getChangedStateForCaseReview(callbackRequest.getCaseDetails().getData());
@@ -81,7 +84,7 @@ public class NextStepsController {
                 log.error(CASE_ID_ERROR, callbackRequest.getCaseDetails().getId(), bindingResult);
                 throw new BadRequestException("Invalid payload", bindingResult);
             }
-            
+
             CCDData ccdData = ccdBeanTransformer.transform(callbackRequest);
 
             FeesResponse feesResponse = feeService.getAllFeesData(
@@ -149,6 +152,12 @@ public class NextStepsController {
             log.debug("POST: {} {}", uri, objectMapper.writeValueAsString(callbackRequest));
         } catch (JsonProcessingException e) {
             log.error("POST: {}", uri, e);
+        }
+    }
+
+    public void validateEmailAddresses(CallbackRequest callbackRequest) {
+        for (CaseDetailsEmailValidationRule rule : allCaseDetailsEmailValidationRule) {
+            rule.validate(callbackRequest.getCaseDetails());
         }
     }
 }
