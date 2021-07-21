@@ -390,7 +390,7 @@ public class NotificationControllerTest {
     public void caseStoppedWithNoEmailNotificationRequestedShouldReturnBulkPrintError() throws Exception {
         when(bulkPrintService
             .sendToBulkPrintForGrant(any(CallbackRequest.class), eq(Document.builder().build()), eq(Document
-                .builder().build()))).thenReturn(null);
+                .builder().build()), any())).thenReturn(null);
         String solicitorPayload = testUtils.getStringFromFile("stopNotificationNoEmailRequested.json");
 
         mockMvc.perform(post(CASE_STOPPED_URL)

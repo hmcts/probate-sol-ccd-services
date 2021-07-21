@@ -27,6 +27,7 @@ import uk.gov.hmcts.probate.model.ccd.raw.UploadDocument;
 import uk.gov.hmcts.probate.model.exceptionrecord.CaseCreationDetails;
 import uk.gov.hmcts.probate.model.payments.PaymentResponse;
 import uk.gov.hmcts.reform.probate.model.BulkScanEnvelope;
+import uk.gov.hmcts.probate.service.document.FindWillsService;
 import uk.gov.hmcts.reform.probate.model.cases.Address;
 import uk.gov.hmcts.reform.probate.model.cases.RegistryLocation;
 
@@ -125,6 +126,9 @@ public class CaveatCallbackResponseTransformerTest {
 
     @Mock
     private CaveatDetails caveatDetailsMock;
+    
+    @Mock
+    private FindWillsService findWillsService;
     
     @Mock
     private SolicitorPBADefaulter solicitorPBADefaulterMock;

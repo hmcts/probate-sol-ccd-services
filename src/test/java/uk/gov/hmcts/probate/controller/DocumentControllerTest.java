@@ -2,7 +2,6 @@ package uk.gov.hmcts.probate.controller;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matcher;
-import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,6 +42,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.empty;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -72,6 +72,8 @@ import static uk.gov.hmcts.probate.model.DocumentType.WILL_LODGEMENT_DEPOSIT_REC
 public class DocumentControllerTest {
 
     private static final String LETTER_UUID = "c387262a-c8a6-44eb-9aea-a740460f9302";
+    public static final String WILL_SELECTION_ERROR_TEXT 
+        = "You must select only one document to be printed as the final will";
     @Autowired
     private MockMvc mockMvc;
 
@@ -174,10 +176,10 @@ public class DocumentControllerTest {
 
         SendLetterResponse sendLetterResponse = new SendLetterResponse(UUID.randomUUID());
         when(bulkPrintService.sendToBulkPrintForGrant(any(CallbackRequest.class), any(Document.class),
-            any(Document.class))).thenReturn(sendLetterResponse);
+                any(Document.class), any())).thenReturn(sendLetterResponse);
 
         when(bulkPrintService.optionallySendToBulkPrint(any(CallbackRequest.class), any(Document.class),
-            any(Document.class), eq(true))).thenReturn(LETTER_UUID);
+                any(Document.class), any(), eq(true))).thenReturn(LETTER_UUID);
 
         when(notificationService.generateGrantReissue(any(CallbackRequest.class)))
             .thenReturn(Document.builder().documentType(SENT_EMAIL).build());
@@ -248,7 +250,7 @@ public class DocumentControllerTest {
             .andReturn();
 
         verify(bulkPrintService)
-            .sendToBulkPrintForGrant(any(CallbackRequest.class), any(Document.class), any(Document.class));
+            .sendToBulkPrintForGrant(any(CallbackRequest.class), any(Document.class), any(Document.class), any());
     }
 
     @Test
@@ -264,8 +266,8 @@ public class DocumentControllerTest {
                 is(DIGITAL_GRANT_REISSUE.getTemplateName())))
             .andReturn();
 
-        verify(bulkPrintService)
-            .optionallySendToBulkPrint(any(CallbackRequest.class), any(Document.class), any(Document.class), eq(true));
+        verify(bulkPrintService).optionallySendToBulkPrint(any(CallbackRequest.class), any(Document.class), 
+            any(Document.class), any(), eq(true));
     }
 
     @Test
@@ -429,7 +431,7 @@ public class DocumentControllerTest {
             .content(solicitorPayload)
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.probateDocumentsGenerated", Matchers.empty()))
+            .andExpect(jsonPath("$.data.probateDocumentsGenerated", empty()))
             .andReturn();
 
         verify(documentGeneratorService)
@@ -680,6 +682,61 @@ public class DocumentControllerTest {
             .andExpect(jsonPath("$.data.reprintDocument.list_items[0].code", is("WelshGrantFileName")))
             .andExpect(jsonPath("$.data.reprintDocument.value.label", is("Grant")))
             .andExpect(jsonPath("$.data.reprintDocument.value.code", is("WelshGrantFileName")))
+            .andReturn();
+    }
+
+    @Test
+    public void shouldValidateMultipleWills() throws Exception {
+        String solicitorPayload = testUtils.getStringFromFile("payloadWithWillsForBulkPrint.json");
+
+        mockMvc.perform(post("/document/determine-wills-available")
+            .content(solicitorPayload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.hasMultipleWills", is("Yes")))
+            .andReturn();
+    }
+
+    @Test
+    public void shouldValidateWillSingleSelected() throws Exception {
+        String solicitorPayload = testUtils.getStringFromFile("payloadWithWillSelectedForBulkPrint.json");
+
+        mockMvc.perform(post("/document/validate-will-selection")
+            .content(solicitorPayload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.willSelection[0].value.documentSelected[0]", containsString("Yes")))
+            .andExpect(jsonPath("$.data.willSelection[0].value.uploadedComments", 
+                containsString("some upload comments")))
+            .andExpect(jsonPath("$.data.willSelection[1].value.documentSelected", empty()))
+            .andExpect(jsonPath("$.data.willSelection[2].value.documentSelected[0]", containsString("No")))
+            .andExpect(jsonPath("$.data.willSelection[3].value.documentSelected", empty()))
+            .andReturn();
+    }
+
+    @Test
+    public void shouldErrorValidateWillMultipleSelected() throws Exception {
+        String solicitorPayload = testUtils.getStringFromFile("payloadWithWillsSelectedForBulkPrint.json");
+
+        mockMvc.perform(post("/document/validate-will-selection")
+            .content(solicitorPayload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.errors[0]")
+                .value(WILL_SELECTION_ERROR_TEXT))
+            .andReturn();
+    }
+
+    @Test
+    public void shouldErrorOnValidateNoWillsSelected() throws Exception {
+        String solicitorPayload = testUtils.getStringFromFile("payloadWithNoWillsSelectedForBulkPrint.json");
+
+        mockMvc.perform(post("/document/validate-will-selection")
+            .content(solicitorPayload)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.errors[0]")
+                .value(WILL_SELECTION_ERROR_TEXT))
             .andReturn();
     }
 

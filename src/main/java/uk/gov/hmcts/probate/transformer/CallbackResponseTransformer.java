@@ -18,6 +18,7 @@ import uk.gov.hmcts.probate.model.ccd.raw.CollectionMember;
 import uk.gov.hmcts.probate.model.ccd.raw.Document;
 import uk.gov.hmcts.probate.model.ccd.raw.Payment;
 import uk.gov.hmcts.probate.model.ccd.raw.ProbateAliasName;
+import uk.gov.hmcts.probate.model.ccd.raw.WillDocument;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CallbackRequest;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseData;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseDetails;
@@ -28,6 +29,8 @@ import uk.gov.hmcts.probate.model.exceptionrecord.CaseCreationDetails;
 import uk.gov.hmcts.probate.model.fee.FeesResponse;
 import uk.gov.hmcts.probate.model.payments.PaymentResponse;
 import uk.gov.hmcts.probate.service.ExecutorsApplyingNotificationService;
+import uk.gov.hmcts.probate.service.document.FindWillsService;
+import uk.gov.hmcts.probate.service.document.OrderWillsService;
 import uk.gov.hmcts.probate.service.SolicitorExecutorService;
 import uk.gov.hmcts.probate.service.tasklist.TaskListUpdateService;
 import uk.gov.hmcts.probate.service.template.pdf.PDFManagementService;
@@ -115,6 +118,8 @@ public class CallbackResponseTransformer {
     private final PDFManagementService pdfManagementService;
     private final SolicitorPBADefaulter solicitorPBADefaulter;
     private final SolicitorPBAPaymentDefaulter solicitorPBAPaymentDefaulter;
+    private final FindWillsService findWillService;
+    private final OrderWillsService orderWillsService;
 
     public CallbackResponse updateTaskList(CallbackRequest callbackRequest) {
         ResponseCaseDataBuilder responseCaseDataBuilder = getResponseCaseData(callbackRequest.getCaseDetails(), true);
@@ -537,6 +542,21 @@ public class CallbackResponseTransformer {
         return transformResponse(responseCaseDataBuilder.build());
     }
 
+    public CallbackResponse transformCaseForWillSelection(CallbackRequest callbackRequest) {
+        boolean doTransform = doTransform(callbackRequest);
+        ResponseCaseDataBuilder<?, ?> responseCaseDataBuilder = getResponseCaseData(callbackRequest.getCaseDetails(), 
+            doTransform);
+        List<Document> wills = findWillService.findWills(callbackRequest.getCaseDetails().getData());
+        if (wills.size() > 1) {
+            responseCaseDataBuilder.hasMultipleWills(YES);
+            List<CollectionMember<WillDocument>> willsCollection = orderWillsService.orderWillDocuments(wills);
+            responseCaseDataBuilder.willSelection(willsCollection);
+        } else {
+            responseCaseDataBuilder.hasMultipleWills(NO);
+        }
+        return transformResponse(responseCaseDataBuilder.build());
+    }
+
     public CallbackResponse transformCaseForSolicitorLegalStatementRegeneration(CallbackRequest callbackRequest) {
         boolean doTransform = doTransform(callbackRequest);
         ResponseCaseDataBuilder<?, ?> responseCaseDataBuilder =
@@ -689,6 +709,7 @@ public class CallbackResponseTransformer {
 
             .scannedDocuments(caseData.getScannedDocuments())
             .evidenceHandled(caseData.getEvidenceHandled())
+            .willSelection(caseData.getWillSelection())
 
             .paperForm(caseData.getPaperForm())
             .languagePreferenceWelsh(caseData.getLanguagePreferenceWelsh())

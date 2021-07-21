@@ -32,6 +32,7 @@ import uk.gov.hmcts.probate.model.ccd.raw.ScannedDocument;
 import uk.gov.hmcts.probate.model.ccd.raw.SolsAddress;
 import uk.gov.hmcts.probate.model.ccd.raw.StopReason;
 import uk.gov.hmcts.probate.model.ccd.raw.UploadDocument;
+import uk.gov.hmcts.probate.model.ccd.raw.WillDocument;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CallbackRequest;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseData;
 import uk.gov.hmcts.probate.model.ccd.raw.request.CaseDetails;
@@ -44,6 +45,8 @@ import uk.gov.hmcts.probate.model.payments.PaymentResponse;
 import uk.gov.hmcts.probate.service.ExecutorsApplyingNotificationService;
 import uk.gov.hmcts.probate.service.SolicitorExecutorService;
 import uk.gov.hmcts.probate.service.StateChangeService;
+import uk.gov.hmcts.probate.service.document.FindWillsService;
+import uk.gov.hmcts.probate.service.document.OrderWillsService;
 import uk.gov.hmcts.probate.service.tasklist.TaskListUpdateService;
 import uk.gov.hmcts.probate.transformer.assembly.AssembleLetterTransformer;
 import uk.gov.hmcts.reform.probate.model.BulkScanEnvelope;
@@ -411,6 +414,12 @@ public class CallbackResponseTransformerTest {
 
     @Mock
     private UploadDocument uploadDocumentMock;
+
+    @Mock
+    private FindWillsService findWillsService;
+    
+    @Mock
+    private OrderWillsService orderWillsService;
 
     @Spy
     private DocumentTransformer documentTransformer;
@@ -3157,6 +3166,42 @@ public class CallbackResponseTransformerTest {
         assertEquals(null, callbackResponse.getData().getBulkPrintPdfSize());
     }
 
+    @Test
+    public void shouldDetermineWillsOnCase() {
+        when(findWillsService.findWills(any())).thenReturn(Arrays.asList(Document.builder().build(), 
+            Document.builder().build()));
+        CallbackResponse callbackResponse = underTest.transformCaseForWillSelection(callbackRequestMock);
+        assertEquals("Yes", callbackResponse.getData().getHasMultipleWills());
+    }
+
+    @Test
+    public void shouldDetermineNoWillsOnCase() {
+        when(findWillsService.findWills(any())).thenReturn(Collections.emptyList());
+        CallbackResponse callbackResponse = underTest.transformCaseForWillSelection(callbackRequestMock);
+        assertEquals("No", callbackResponse.getData().getHasMultipleWills());
+    }
+
+    @Test
+    public void shouldTransformWillsSelectionOnCase() {
+        List<CollectionMember<WillDocument>> wills = new ArrayList<>();
+        CollectionMember<WillDocument> will1 = new CollectionMember<WillDocument>(WillDocument.builder()
+            .documentSelected(Arrays.asList("Yes"))
+            .build());
+        wills.add(will1);
+        CollectionMember<WillDocument> will2 = new CollectionMember<WillDocument>(WillDocument.builder()
+            .documentSelected(Collections.emptyList())
+            .build());
+        wills.add(will2);
+        caseDataBuilder.willSelection(wills);
+        when(caseDetailsMock.getData()).thenReturn(caseDataBuilder.build());
+
+        CallbackResponse callbackResponse = underTest.transform(callbackRequestMock);
+        assertEquals("Yes",
+            callbackResponse.getData().getWillSelection().get(0).getValue().getDocumentSelected().get(0));
+        assertEquals(0,
+            callbackResponse.getData().getWillSelection().get(1).getValue().getDocumentSelected().size());
+    }
+    
     private CollectionMember<ProbateAliasName> createdDeceasedAliasName(String id, String forename, String lastname,
                                                                         String onGrant) {
         ProbateAliasName pan = ProbateAliasName.builder()
