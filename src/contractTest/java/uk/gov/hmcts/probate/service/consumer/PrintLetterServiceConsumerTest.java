@@ -17,18 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.TestPropertySource;
-import uk.gov.hmcts.reform.sendletter.api.model.v3.Document;
-import uk.gov.hmcts.reform.sendletter.api.model.v3.LetterV3;
-import uk.gov.hmcts.reform.sendletter.api.proxy.SendLetterApiProxy;
+import uk.gov.hmcts.probate.service.consumer.util.ResourceLoader;
+import uk.gov.hmcts.reform.printletter.api.model.v1.PrintRequest;
+import uk.gov.hmcts.reform.printletter.api.proxy.PrintLetterApiProxy;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 
 @ExtendWith(PactConsumerTestExt.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -36,52 +30,43 @@ import java.util.Map;
 @PactFolder("pacts")
 @SpringBootTest
 @TestPropertySource(locations = {"/application.properties"})
-public class SendLetterServiceConsumerTest {
+public class PrintLetterServiceConsumerTest {
 
-    private static final String XEROX_TYPE_PARAMETER = "PRO001";
-    private static final String ADDITIONAL_DATA_CASE_REFERENCE = "caseReference";
     private static final String SERVICE_AUTHORIZATION_HEADER = "ServiceAuthorization";
     private static final String SOME_SERVICE_AUTH_TOKEN = "someServiceAuthToken";
-
+    private static final UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-556642440000");
     @Autowired
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
     @Autowired
-    private SendLetterApiProxy sendLetterApiProxy;
+    private PrintLetterApiProxy printLetterApiProxy;
 
-    @Pact(provider = "rpeSendLetterService_SendLetterController", consumer = "probate_backOffice")
-    public RequestResponsePact createSendLetterServiceFragment(PactDslWithProvider builder)
-        throws IOException, URISyntaxException {
+    @Pact(provider = "rpePrintLetterService_PrintLetterController", consumer = "probate_backOffice")
+    public RequestResponsePact createPrintLetterServiceFragment(PactDslWithProvider builder)
+            throws Exception {
         return builder
             .given("A valid send letter request is received")
             .uponReceiving("a request to send that letter")
-            .path("/letters")
-            .query("isAsync=false")
-            .method("POST")
+            .path("/print-jobs/" + uuid)
+            .method("PUT")
             .headers(SERVICE_AUTHORIZATION_HEADER, SOME_SERVICE_AUTH_TOKEN)
-            .body(createJsonObject(buildLetter()), "application/vnd.uk.gov.hmcts.letter-service.in.letter.v3+json")
+            .body(createJsonObject(buildLetter()), "application/json")
             .willRespondWith()
             .matchHeader(HttpHeaders.CONTENT_TYPE, "application/json")
             .body(new PactDslJsonBody()
-                .uuid("letter_id", "123e4567-e89b-12d3-a456-556642440000"))
+                .uuid("letter_id", uuid))
             .status(HttpStatus.SC_OK)
             .toPact();
     }
 
     @Test
-    @PactTestFor(pactMethod = "createSendLetterServiceFragment")
-    public void verifySendLetterPact() throws IOException, JSONException, URISyntaxException {
-        sendLetterApiProxy.sendLetter(SOME_SERVICE_AUTH_TOKEN, "false", buildLetter());
+    @PactTestFor(pactMethod = "createPrintLetterServiceFragment")
+    public void verifyPrintLetterPact() throws Exception {
+        printLetterApiProxy.print(SOME_SERVICE_AUTH_TOKEN, uuid, buildLetter());
     }
 
-    private LetterV3 buildLetter() throws IOException, URISyntaxException {
-        var pdfPath = Paths.get(ClassLoader.getSystemResource("files/response.pdf").toURI());
-        byte[] pdf = Files.readAllBytes(pdfPath);
-        var response = Base64.getEncoder().encodeToString(pdf);
-        Map<String, Object> additionalData = new HashMap<>();
-        additionalData.put(ADDITIONAL_DATA_CASE_REFERENCE, "123421323");
-        return new LetterV3(XEROX_TYPE_PARAMETER,
-                Collections.singletonList(new Document(response, 2)),
-                additionalData);
+    private PrintRequest buildLetter() throws Exception {
+        var json = ResourceLoader.loadJson("json/print_job.json");
+        return objectMapper.readValue(json, PrintRequest.class);
     }
 
     protected String createJsonObject(Object obj) throws JSONException, IOException {
