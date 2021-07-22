@@ -7,7 +7,7 @@ const commonConfig = require('src/test/end-to-end/pages/common/commonConfig');
 module.exports = async function (caseRef) {
 
     const I = this;
-    await I.waitForText(issueGrantConfig.waitForText, testConfig.TestTimeToWaitForText);
+    await I.waitForText(issueGrantConfig.waitForText, testConfig.WaitForTextTimeout);
 
     await I.see(caseRef);
 

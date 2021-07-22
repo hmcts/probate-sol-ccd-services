@@ -7,7 +7,7 @@ const commonConfig = require('src/test/end-to-end/pages/common/commonConfig');
 module.exports = async function (caseRef) {
 
     const I = this;
-    await I.waitForText(markForIssueConfig.waitForText, testConfig.TestTimeToWaitForText);
+    await I.waitForText(markForIssueConfig.waitForText, testConfig.WaitForTextTimeout);
 
     await I.see(caseRef);
     await I.click(`#boExaminationChecklistQ1_${markForIssueConfig.list1_text}`);
